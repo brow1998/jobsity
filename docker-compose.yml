@@ -1,0 +1,111 @@
+version: '3'
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    networks:
+      - broker-kafka
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    networks:
+      - broker-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    networks:
+      - broker-kafka
+    depends_on:
+      - kafka
+    ports:
+      - 19000:9000
+    environment:
+      KAFKA_BROKERCONNECT: kafka:29092
+
+  ch_server:
+    image: yandex/clickhouse-server
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - ./.storage/clickhouse:/var/lib/clickhouse
+    networks:
+        - ch_ntw
+
+  ch_init:
+      image: yandex/clickhouse-server
+      volumes:
+        - ./.storage/clickhouse:/var/clickhouse
+      depends_on:
+        - ch_server
+      networks:
+        - ch_ntw
+      entrypoint: [ '/bin/sh', '-c' ]
+      command: |
+        "
+        while ! clickhouse-client --host ch_server -q \"SHOW databases;\"; do
+            echo waiting for clickhouse up
+            sleep 1
+        done
+
+        clickhouse-client --host ch_server --queries-file /var/clickhouse/innitial_ddl.sql
+
+        clickhouse-client --host ch_server -q \"SELECT * FROM trips;\"
+        "
+  db:
+      image: postgres
+      restart: always
+      environment:
+        - POSTGRES_PASSWORD=metabase
+        - POSTGRES_USER=metabase
+        - POSTGRES_DB=metabase
+      ports:
+        - 5432:5432
+      volumes:
+        - ./.storage/metabase/postgres:/var/lib/postgresql/data
+      networks:
+        - postgres-network
+  metabase:
+      volumes:
+        - ./.storage/metabase/data:/metabase-data
+        - ./.storage/metabase/plugins:/plugins
+      environment:
+        - MB_DB_TYPE=postgres
+        - MB_DB_DBNAME=metabase
+        - MB_DB_PORT=5432
+        - MB_DB_USER=metabase
+        - MB_DB_PASS=metabase
+        - MB_DB_HOST=db
+        - MB_PLUGINS_FOLDER=/plugins
+      ports:
+        - 3000:3000
+      image: metabase/metabase:latest
+      restart: always
+      depends_on:
+        - db
+      networks:
+        - postgres-network
+
+networks:
+  broker-kafka:
+    driver: bridge
+  postgres-network:
+    driver: bridge
+  ch_ntw:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.222.1.0/24
