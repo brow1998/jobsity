@@ -2,23 +2,24 @@
 
 ## Overview
 
-The Challenge was to create a data pipeline to process automatically csv files on a on-demand basis. The logic that I applied was the following:
+The challenge was to build a data pipeline that processes CSV files automatically, on demand. The approach:
 
-![XPTO](architecture_overview.png)
-- Python CLI to process any data stored a the `data` folder. The Script basically converts every single row into a kafka message.
-- That data is sent to a Kafka Topic to be processed and then consumed into a ClickHouse DataBase, which is a columnar DB, very performatic for analytical data.
-- Also took the freedom to instantiate a Metabase Server, to help the future analytical team
+![Architecture: Python CLI → Kafka → ClickHouse, with Metabase on top](architecture_overview.png)
 
-In order to make everything run smoothly, just make sure you have docker and docker compose installed and run `docker compose up`
+- A Python CLI processes any file in the `data` folder and turns every row into a Kafka message.
+- Messages go to a Kafka topic and are consumed into ClickHouse, a columnar database built for analytical workloads.
+- A Metabase server sits on top, ready for the analytics team.
 
-Afterwards, if you want to test the process itself, run `python data-ingestion.py`
+To run it, install Docker and Docker Compose, then run `docker compose up`.
 
-I couldn't run the entire process on my local machine because of disk/RAM, but in a cloud environment, the solution could easily scale up using more Kafka nodes. 
+Then, to test the ingestion itself, run `python data-ingestion.py`.
+
+I couldn't run the full dataset locally because of disk and RAM limits; in the cloud, the solution scales out by adding Kafka nodes.
 
 ## Cloud Solution
 
-The cloud solution wouldn't be so different. I'll just send the kafka topic directly into the Data Lake (S3, for instance) and later, would use the messages in Spark using EMR, but the final destination and the visualization tool would remain the same.
+The cloud version wouldn't be very different: the Kafka topic would land directly in a data lake (S3, for instance) and Spark on EMR would process the messages, while the final destination and the visualization tool stay the same.
 
 ## Bonus questions
 
-The answers are located in the `requested_queries.sql`.
+The answers are in `requested_queries.sql`.
