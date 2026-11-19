@@ -1,2 +1,5 @@
-data/trips_final.csv
-__pycache__/*
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/

@@ -1,0 +1,29 @@
+[project]
+name = "trips"
+version = "1.0.0"
+description = "On-demand trip ingestion: CSV to Kafka to ClickHouse, deduplicated and traceable"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = [
+    "clickhouse-connect>=0.8,<1",
+    "confluent-kafka>=2.6,<3",
+]
+
+[project.scripts]
+trips = "trips.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 120
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["e2e: needs the docker compose stack (Kafka + ClickHouse) running"]
+addopts = "-m 'not e2e'"
